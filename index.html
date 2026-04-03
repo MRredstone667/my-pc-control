@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PC Remote Control</title>
+    <!-- Knihovna pro MQTT v prohlížeči -->
+    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+    <style>
+        body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background: #121212; color: white; }
+        .btn { padding: 20px 40px; font-size: 1.5rem; cursor: pointer; border: none; border-radius: 10px; background: #2ecc71; color: white; transition: 0.3s; }
+        .btn:hover { background: #27ae60; transform: scale(1.05); }
+        .btn:active { transform: scale(0.95); }
+        input { padding: 10px; margin-bottom: 20px; border-radius: 5px; border: 1px solid #444; background: #222; color: white; text-align: center; }
+        #status { margin-top: 20px; color: #888; }
+    </style>
+</head>
+<body>
+
+    <h1>Crafty Server Control</h1>
+    
+    <input type="password" id="pass" placeholder="Zadej PIN">
+    <button class="btn" onclick="sendPowerSignal()">ZAPNOUT / VYPNOUT</button>
+    
+    <div id="status">Stav: Odpojeno</div>
+
+    <script>
+        // Údaje ze Shiftr.io (POZOR: Každý, kdo uvidí zdrojový kód stránky, uvidí tyto údaje!)
+        // Pro větší bezpečnost je lepší mít token s právy jen pro "Publish"
+        const clientId = 'WebControl_' + Math.random().toString(16).substr(2, 8);
+        const host = 'wss://mrredstone32:KFeBkZ6ExtL3i4N2@mrredstone32.cloud.shiftr.io';
+
+        const client = mqtt.connect(host, { clientId: clientId });
+
+        client.on('connect', () => {
+            document.getElementById('status').innerText = 'Stav: Připojeno k MQTT';
+            document.getElementById('status').style.color = '#2ecc71';
+        });
+
+        function sendPowerSignal() {
+            const pin = document.getElementById('pass').value;
+            
+            // Tady si nastav své tajné heslo/PIN
+            if (pin === "1234") { 
+                client.publish('pc/power', 'pulse');
+                alert('Signál odeslán!');
+            } else {
+                alert('Špatný PIN!');
+            }
+        }
+    </script>
+</body>
+</html>
