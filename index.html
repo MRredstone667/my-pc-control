@@ -3,56 +3,70 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PC Remote Control</title>
-    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+    <title>Správa Serveru</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.1.0/paho-mqtt.min.js"></script>
     <style>
-        body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background: #121212; color: white; text-align: center; }
-        a { color: #2ecc71; text-decoration: none; font-weight: bold; }
-        .message-box { background: #222; padding: 20px; border-radius: 10px; border: 1px solid #444; }
+        body { font-family: sans-serif; text-align: center; margin-top: 20%; background-color: #121212; color: white; }
+        #content { display: none; }
+        .doc-message { color: #ff5555; }
     </style>
 </head>
 <body>
-    <div class="message-box" id="content">
-        <h2>Zpracovávám požadavek...</h2>
+
+    <div id="docs" class="doc-message">
+        <h1>Běž si přečíst dokumentaci.</h1>
+        <p>Nemáš zde oprávnění.</p>
+    </div>
+
+    <div id="content">
+        <h1>Připojování a odesílání příkazu...</h1>
     </div>
 
     <script>
-        // Přečte vše, co je v URL za otazníkem (?)
-        const queryString = window.location.search.substring(1);
+        const urlParams = new URLSearchParams(window.location.search);
+        const encodedData = urlParams.get('xyz');
 
-        // Pokud adresa nezačíná "wss://", ukážeme chybovou hlášku
-        if (!queryString.startsWith("wss://")) {
-            document.getElementById("content").innerHTML = 
-                "<h2 style='color: #e74c3c;'>❌ Invalidní token!</h2>" +
-                "<p>Přečtěte si prosím návod na stránce:</p>" +
-                "<a href='https://github.com/MRredstone667/my-pc-control'>https://github.com/MRredstone667/my-pc-control</a>";
-        } else {
-            // Pokud je token v pořádku, připojíme se
-            const host = queryString;
-            const clientId = 'WebControl_' + Math.random().toString(16).substr(2, 8);
-            
-            const client = mqtt.connect(host, { clientId: clientId });
+        if (encodedData) {
+            try {
+                // Rozkódování Base64 dat z URL
+                const decodedJson = atob(encodedData);
+                const credentials = JSON.parse(decodedJson);
 
-            client.on('connect', () => {
-                // Okamžitě odešle příkaz
-                client.publish('pc/power', 'pulse');
-                
-                // Počká půl sekundy, vyhodí hlášku a zavře okno
-                setTimeout(() => {
-                    alert('Příkaz byl poslán!');
-                    
-                    // Bezpečnostní mechanismus prohlížečů může blokovat window.close(),
-                    // pokud kartu neotevřel JavaScript. Proto upravíme i text.
-                    document.getElementById("content").innerHTML = 
-                        "<h2 style='color: #2ecc71;'>✅ Příkaz odeslán</h2><p>Můžete zavřít tuto záložku.</p>";
-                    
-                    window.close(); // Pokus o zavření karty
-                }, 500);
-            });
+                document.getElementById('docs').style.display = 'none';
+                document.getElementById('content').style.display = 'block';
 
-            client.on('error', (err) => {
-                document.getElementById("content").innerHTML = "<h2 style='color: #e74c3c;'>❌ Chyba připojení k MQTT</h2>";
-            });
+                const mqttHost = credentials.h;
+                const mqttPort = 8884; // WebSockets port pro prohlížeč
+                const mqttUser = credentials.u;
+                const mqttPass = credentials.p;
+                const topic = "server/rele/cmd";
+
+                const clientId = "WebClient_" + Math.random().toString(16).substr(2, 8);
+                const client = new Paho.Client(mqttHost, mqttPort, "/mqtt", clientId);
+
+                const options = {
+                    useSSL: true,
+                    userName: mqttUser,
+                    password: mqttPass,
+                    onSuccess: function() {
+                        const message = new Paho.Message("ZAPNI");
+                        message.destinationName = topic;
+                        client.send(message);
+
+                        alert("Požadavek odeslán!");
+                        window.open('', '_self', ''); 
+                        window.close();
+                    },
+                    onFailure: function(err) {
+                        alert("Chyba připojení ke cloudu: " + err.errorMessage);
+                    }
+                };
+
+                client.connect(options);
+
+            } catch (e) {
+                console.log("Neplatný formát dat.");
+            }
         }
     </script>
 </body>
