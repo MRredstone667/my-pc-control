@@ -21,3 +21,6 @@ Tento systém je privátní. Z bezpečnostních důvodů nejsou ověřovací tok
 * **Frontend:** HTML, JavaScript (MQTT.js)
 * **Notifikace:** Discord Webhooks
 * **Hosting:** GitHub Pages
+
+## Link
+https://mrredstone667.github.io/my-pc-control/
