@@ -1,0 +1,43 @@
+export default async function handler(req, res) {
+    const { token, r, s } = req.query;
+
+    // Definice povolených tokenů načtených bezpečně ze serverových proměnných
+    const validTokens = {
+        [process.env.ADMIN_TOKEN]: { allowed: [1, 2, 3, 4] },
+        [process.env.FAMILY_TOKEN]: { allowed: [1, 2] },
+        [process.env.FRIEND_TOKEN]: { allowed: [1] }
+    };
+
+    // Kontrola existence tokenu
+    if (!token || !validTokens[token]) {
+        return res.status(403).json({ error: "Neplatny nebo chybejici token" });
+    }
+
+    const relay = parseInt(r);
+    const state = parseInt(s);
+
+    // Validace parametrů
+    if (isNaN(relay) || isNaN(state) || relay < 1 || relay > 4 || state < 0 || state > 2) {
+        return res.status(400).json({ error: "Neplatne parametry" });
+    }
+
+    // Kontrola oprávnění pro dané relé
+    if (!validTokens[token].allowed.includes(relay)) {
+        return res.status(403).json({ error: "Nemate opraneni pro toto rele" });
+    }
+
+    // Hlavní Blynk token ESP32 načtený z proměnných prostředí
+    const blynkAuth = process.env.BLYNK_AUTH_TOKEN;
+    const blynkUrl = `https://fra1.blynk.cloud/external/api/update?token=${blynkAuth}&v${relay}=${state}`;
+
+    try {
+        const blynkResponse = await fetch(blynkUrl);
+        if (blynkResponse.ok) {
+            return res.status(200).json({ success: true, message: `Prikaz pro rele ${relay} odeslan` });
+        } else {
+            return res.status(500).json({ error: "Chyba komunikace s Blynk serverem" });
+        }
+    } catch (err) {
+        return res.status(500).json({ error: "Interni chyba serveru" });
+    }
+}
